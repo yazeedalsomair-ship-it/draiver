@@ -68,6 +68,13 @@
   .btn-done:hover { background: #2C8A40; }
   .btn-done:disabled { background: #B6C8D0; box-shadow: none; cursor: default; }
 
+  .btn-start {
+    flex: 2; height: 46px; border-radius: 12px; border: none; background: #2AA1D4; color: #fff;
+    font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    gap: 8px; cursor: pointer; box-shadow: 0 6px 16px -6px rgba(42,161,212,.55); transition: all .15s;
+  }
+  .btn-start:hover { background: #1E91C4; }
+
   .done-banner {
     display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #E8F5EC;
     color: #2C7E3C; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-top: 12px;
@@ -134,11 +141,12 @@ function fmtTime(ts) {
 const STATUS = {
   new:        { label:'جديد',          bg:'#EEF0FF', color:'#3730A3', dot:'#3730A3' },
   preparing:  { label:'جاري التحضير',  bg:'#FBF1E0', color:'#B5751A', dot:'#D97706' },
+  ready:      { label:'جاهزة',         bg:'#E6FBF8', color:'#0E7A70', dot:'#0E9488' },
   delivering: { label:'جاري التوصيل',  bg:'#E6F4FB', color:'#137CAE', dot:'#2AA1D4' },
   done:       { label:'تم التوصيل',    bg:'#E8F5EC', color:'#2C7E3C', dot:'#37A24C' },
 };
 
-// Read ?id= from the URL — if present, show only that order; else show all active deliveries
+// Read ?id= from the URL — if present, show only that order; else show active deliveries
 const urlId = new URLSearchParams(location.search).get('id');
 
 function render() {
@@ -146,14 +154,14 @@ function render() {
 
   let items = urlId
     ? orders.filter(o => o.id === urlId)
-    : orders.filter(o => o.status === 'delivering' || o.status === 'preparing')
+    : orders.filter(o => o.status === 'ready' || o.status === 'delivering')
             .sort((a,b) => b.ts - a.ts);
 
   if (!items.length) {
     wrap.innerHTML = `<div class="empty-state">
       <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       <h3>لا توجد طلبات حالياً</h3>
-      <p>سيظهر هنا أي طلب جديد يُرسل لك</p>
+      <p>سيظهر هنا أي طلب جاهز للتوصيل</p>
     </div>`;
     return;
   }
@@ -161,6 +169,7 @@ function render() {
   wrap.innerHTML = items.map(o => {
     const st = STATUS[o.status] || STATUS.new;
     const isDone = o.status === 'done';
+    const isReady = o.status === 'ready';
     return `
     <div class="card">
       <div class="card-top">
@@ -185,6 +194,17 @@ function render() {
 
       ${isDone ? `
         <div class="done-banner">✓ تم تأكيد التوصيل لهذا الطلب</div>
+      ` : isReady ? `
+        <div class="actions">
+          <a href="tel:${o.phone}" class="btn-call">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            اتصال
+          </a>
+          <button class="btn-start" onclick="startDelivering('${o.id}')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            بدء التوصيل
+          </button>
+        </div>
       ` : `
         <div class="actions">
           <a href="tel:${o.phone}" class="btn-call">
@@ -201,8 +221,17 @@ function render() {
   }).join('');
 
   if (!urlId) {
-    wrap.insertAdjacentHTML('beforeend', `<div class="footnote">تعرض هذه الصفحة الطلبات الجاهزة للتوصيل تلقائياً</div>`);
+    wrap.insertAdjacentHTML('beforeend', `<div class="footnote">تعرض هذه الصفحة الطلبات الجاهزة وقيد التوصيل تلقائياً</div>`);
   }
+}
+
+function startDelivering(id) {
+  const o = orders.find(x => x.id === id);
+  if (!o) return;
+  o.status = 'delivering';
+  if (!o.tsDelivering) o.tsDelivering = Date.now();
+  persistOrder(o);
+  showToast('🚗 تم بدء التوصيل');
 }
 
 function markDone(id) {
@@ -210,6 +239,7 @@ function markDone(id) {
   const o = orders.find(x => x.id === id);
   if (!o) return;
   o.status = 'done';
+  if (!o.tsDone) o.tsDone = Date.now();
   persistOrder(o);
   showToast('✅ تم تأكيد التوصيل — شكراً لك');
 }
