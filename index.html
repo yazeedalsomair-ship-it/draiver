@@ -90,6 +90,7 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   .footnote { text-align: center; font-size: 11px; color: #9AAEB6; padding: 20px 0 8px; }
+  .page-footer { text-align: center; font-size: 11px; color: #9AAEB6; padding: 4px 0 16px; }
 </style>
 </head>
 <body>
@@ -103,6 +104,8 @@
 </header>
 
 <div class="wrap" id="wrap"></div>
+
+<div class="page-footer">Made by Dr.Yazeed Alsomair</div>
 
 <div class="toast" id="toast"></div>
 
@@ -135,7 +138,9 @@ function persistOrder(o) { db.collection('orders').doc(o.id).set(o); }
 
 function fmtTime(ts) {
   const d = new Date(ts);
-  return d.toLocaleDateString('ar-SA') + ' ' + d.toLocaleTimeString('ar-SA', {hour:'2-digit',minute:'2-digit'});
+  const datePart = d.toLocaleDateString('en-GB');
+  const timePart = d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+  return datePart + ' ' + timePart;
 }
 
 const STATUS = {
@@ -175,7 +180,7 @@ function render() {
       <div class="card-top">
         <div>
           <div class="patient-name">${o.name || '—'}</div>
-          <div class="patient-meta">طلب ${o.id} · ${fmtTime(o.ts)}</div>
+          <div class="patient-meta">طلب ${o.id} · <span dir="ltr">${fmtTime(o.ts)}</span></div>
         </div>
         <span class="status-pill" style="background:${st.bg};color:${st.color};"><span class="status-dot" style="background:${st.dot}"></span>${st.label}</span>
       </div>
